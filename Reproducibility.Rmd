@@ -1,0 +1,180 @@
+---
+title: "ReproducibilityTask"
+author: "Anon"
+date: "2023-11-05"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+```
+
+```{r, include=FALSE}
+library(tinytex)
+library(ggplot2)
+library(palmerpenguins)
+library(janitor)
+library(dplyr)
+```
+## QUESTION 01: Data Visualisation for Science Communication
+
+*Create a figure using the Palmer Penguin dataset that is correct but badly communicates the data. **Do not make a boxplot**.*
+
+*Use the following references to guide you:*
+
+-   [*https://www.nature.com/articles/533452a*](https://www.nature.com/articles/533452a){.uri}
+-   [*https://elifesciences.org/articles/16800*](https://elifesciences.org/articles/16800){.uri}
+
+*Note: Focus on visual elements rather than writing misleading text on it.*
+
+### a) Provide your figure here:
+
+```{r bad figure code, echo=FALSE}
+penguins_raw <- read.csv("C:\\Users\\aimee\\OneDrive - Nexus365\\code\\ReproducibilityAssignment\\data\\penguins_raw_data.csv")
+
+ggplot(data = penguins_raw,
+       aes(x = Flipper.Length..mm.,
+           y = Body.Mass..g.
+       )) +
+  geom_point(colour = "yellow", shape = 12, size = 5) +
+  labs(x = 'Flipper length / mm',
+       y = 'Body mass / g') +
+  ggtitle("Scatter plot to show flipper length vs body mass:") +
+  scale_y_continuous(
+    limits = c(0, 15000)
+  )
+```
+
+### b) Write about how your design choices mislead the reader about the underlying data (200-300 words).
+
+There are many ways to mislead a reader about the true data trends through badly designing a graph. In this example, a good graph would show a positive correlation between body mass and flipper length in penguins, however the design of the graph I makes this difficult to see. 
+
+Firstly, the y-scale bar for body mass has a particularly large range from 0-15,000g which means the data points that range from around 2500-6500g are focused towards the bottom of the graph rather than spread out. This means the reader cannot see the differences between each data point and thus the trend, misleading the reader into thinking there is not much variation between points.
+
+Next, the peculiar shape of the data points (a square made up of four smaller squares) and their large size make it hard for the reader to interpret which values the data points represent (Midway, 2020). The large size means each data point covers many different values, overlapping each other and this may lead to misintepretation of the trend.
+
+Furthermore, the yellow coloured data points are too light and so are contrasting with the grey background making it difficult to observe the trend (Midway, 2020) . All these design faults mask the positive correlation between the two continuous variables that would be seen if the graph was designed in the most informative way. 
+
+References:
+
+-Midway SR. Principles of Effective Data Visualization. Patterns (N Y). 2020 Nov 11;1(9):100141. doi: 10.1016/j.patter.2020.100141. PMID: 33336199; PMCID: PMC7733875
+
+## QUESTION 2: Data Pipeline
+
+### Introduction
+
+In the following coding chunk, I first save a copy of the raw data frame into the data directory I made earlier on before looking at the names of the variables and checking to see what changes need to be made to make the data more readable. I then load in the relevant packages needed for cleaning (dplyr and janitor), source my cleaning.R script from my repository and use the relevant functions to clean my data. The next part checks the names are now readable. Consistency is key in order for data analysis to be undertaken in R and so this is why the data needs to be cleaned.
+
+I then run the first few rows of the data frame to choose two variables to explore, use another function from the cleaning.R file to filter for these chosen variables (culmen length and body mass) and then look at the first few rows of this new data frame.
+
+```{r Data Exploration}
+write.csv(penguins_raw, "data/penguins_raw_data.csv") #This code exports the contents of the penguins_raw data frame into a csv file saved in the data directory I have made  
+
+names(penguins_raw) #This code allows me to look at the names in the raw data columns to check what needs to be changed for readability purposes
+
+library(janitor)
+library(dplyr) #Loading in relevant packages
+
+source("functions/cleaning.r") #This code sources my cleaning functions from an R script within the repository
+
+#This is my pipeline for cleaning the data, using functions found in the cleaning.R script I made 
+penguins_clean <- penguins_raw %>% 
+  clean_function() %>% 
+  clean_column_names() %>% #This function makes sure the column names are lower case and snake case
+  shorten_species() %>% #This function makes sure the species names are shortened    
+  remove_empty_columns_rows() #This function removes any empty columns or rows
+
+names(penguins_clean) #This code now shows us the new, cleaned names of the columns to ensure they are now readable
+
+write.csv(penguins_clean, "data/penguins_clean.csv") #Since I am happy with the changes, this code exports the contents of the new penguins_clean data frame into a CSV file saved in the data directory I have made
+
+head(penguins_clean) #This code shows me the first few rows in the cleaned data frame so I can choose some variables to explore
+
+culmen_data <- penguins_clean %>%
+    subset_columns(c("culmen_length_mm", "body_mass_g")) %>%
+    remove_NA() #This section of code filters the data so we are able to isolate two chosen variables: culmen length and body mass and calls the object culmen_data
+
+head(culmen_data) #I can now see the first 6 rows of my filtered data set, containing the relevant values of my two variables
+
+```
+### Hypothesis
+
+In my next coding chunk, I plot a scatter plot of body mass vs culmen length using the ggplot2 package and then after observing the graph, I create a set of hypotheses:
+
+Null hypothesis: Body mass does not affect culmen length in penguins
+
+Alternative hypothesis: Body mass increases culmen length in penguins 
+
+```{r}
+source("functions/plotting.r") #This code is sourcing my functions R script within the repository
+
+culmen_scattergraph <- plot_culmen_figure(culmen_data) #This code uses the plot_culmen_figure function from my plotting.R script to create a scatter graph of the culmen data frame data 
+
+culmen_scattergraph #This code prints the graph
+
+ggsave("culmen_scattergraph.png", plot = culmen_scattergraph) #This code saves a copy of my figure to the repository 
+```
+### Statistical Methods
+
+In the next coding chunk, I use a linear regression statistical test as I believe an increase in body mass would cause an increase in culmen length in penguins. I then summarise the results from the test to look at the statistical significance. 
+
+```{r Statistics}
+lm_model <- lm(culmen_length_mm ~ body_mass_g, data = penguins_clean) #This code creates an object called lm_model which uses the simple linear regression function on the data provided 
+summary(lm_model) #This code summarises the statistical output of the linear regression above so we can see if there if the relationship  between the variables is significant
+```
+### Results & Discussion
+
+This next coding chunk sources the plotting R script again, and uses the code to produce a scatterplot with the linear regression line within it. It is then saved to the repository.
+
+```{r Plotting Results}
+source("functions/plotting.r") #This code is sourcing functions from my plotting.R script within the repository 
+culmen_lm <- plot_culmen_lm(culmen_data) #This code creates an object called culmen_lm and then uses the function from the plotting.R to do a linear regression on the culmen data 
+culmen_lm #This prints the result 
+
+ggsave("culmen_lm.png", plot = culmen_lm) #This code saves a copy of my figure to the repository 
+```
+The red line in the above graph represents the linear regression line with a positive gradient of 0.00405 meaning that an increase in body mass by 1g causes an increase in culmen length by 0.004mm in penguins. The p value associated with this relationship is <2e-16 which is extremely small (much less than 0.05) meaning the relationship is highly significant.
+
+Furthermore, the R-squared value from the summary is 0.3542 meaning that approximately 35.42% of the variance in culmen length can be explained by differences in body mass of penguins.
+
+### Conclusion
+
+In conclusion, there is sufficient evidence to reject the null hypothesis that there is no relationship between body mass and culmen length in penguins, and thus accept the alternative hypothesis that an increase in body mass causes an increase in culmen length due to the low p value (less than 0.05) and positive linear relationship shown. 
+
+------------------------------------------------------------------------
+
+## QUESTION 3: Open Science
+
+### a) GitHub
+
+*Upload your RProject you created for **Question 2** and any files and subfolders used to GitHub. Do not include any identifiers such as your name. Make sure your GitHub repo is public.*
+
+*GitHub link:* https://github.com/skittles0811/ReproducibilityGithub
+
+*You will be marked on your repo organisation and readability.*
+
+### b) Share your repo with a partner, download, and try to run their data pipeline.
+
+*Partner's GitHub link:* 
+
+*You **must** provide this so I can verify there is no plagiarism between you and your partner.*
+
+### c) Reflect on your experience running their code. (300-500 words)
+
+My partner’s code was clear and concise, meaning coding techniques used were not overly complicated making for smooth running code. The comments placed before the functions explained why they were performing them and meant the code was easy to follow along with. The object names were also all readable and descriptive meaning they were easy to remember. 
+
+
+I think the R markdown file is quite understandable, however, to improve how understandable the code was, comments could be added next to important lines of code to tell us what the components are and what the code is doing to the data. Furthermore, some improvements could be made to make their data analysis more reproducible. For example, a cleaning function could be used sourced from another R script, so the code could be reused later on if necessary. Using functions also means the coding is in more readable chunks and so it is easier to spot mistakes or make changes. Saving a clean version of the data frame would also make the code more reproducible instead of cleaning the chosen variables individually. This is because others would be able to start from the same clean data easily and so obtain results that are consistent which is important when sharing code.
+
+
+If my partners figure needed to be altered it may be difficult since no plotting functions were used meaning I would have to alter the primary code instead of the related script containing the functions. By editing the primary code, this would not allow for version control since if I changed the figure, the original figure would be lost. Therefore, to make it easier to alter the figure, functions should be used. 
+
+### d) Reflect on your own code based on your experience with your partner's code and their review of yours. (300-500 words)
+
+-   *What improvements did they suggest, and do you agree?*
+
+-   *What did you learn about writing code for other people?*
+
